@@ -8,3 +8,5 @@ sklearn
 websocket_client
 coinbasepro
 cbpro
+alpaca-trade-api
+python-dotenv
