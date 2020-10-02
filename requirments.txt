@@ -1,0 +1,10 @@
+requests
+keras
+matplotlib
+numpy
+pandas
+seaborn
+sklearn
+websocket_client
+coinbasepro
+cbpro
