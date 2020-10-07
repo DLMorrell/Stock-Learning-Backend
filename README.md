@@ -7,7 +7,7 @@ Machine learning functionality to track and predict stock values.
 
 2. Install required dependencies.
 
-    * `pip install -r requirments.txt`
+    * `pip install -r requirements.txt`
 
 3. Run trainer
 
