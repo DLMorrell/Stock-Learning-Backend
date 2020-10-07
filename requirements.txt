@@ -1,6 +1,6 @@
 requests
 keras
-matplotlib
+matplotlib == 3.2.2
 numpy
 pandas
 seaborn
@@ -8,3 +8,7 @@ sklearn
 websocket_client
 coinbasepro
 cbpro
+alpaca-trade-api
+python-dotenv
+alpaca-backtrader-api
+backtrader
