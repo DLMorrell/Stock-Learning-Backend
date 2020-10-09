@@ -4,7 +4,7 @@ from time import sleep
 from dotenv import load_dotenv
 import pandas as pd
 from datetime import datetime
-
+import pytest
 load_dotenv()
 
 class market_data():
@@ -42,6 +42,7 @@ class market_data():
     def getShares(self, symbol):
         Position = self.alpaca.get_position(symbol)
         return Position 
+
 
     # Wait for market to open
     def waitForMarketToOpen(self):
