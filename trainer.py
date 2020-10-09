@@ -13,34 +13,48 @@ import datetime, time
 import tensorflow as tf
 
 sns.set_palette('Set2')
-
-
-endpoint = 'https://min-api.cryptocompare.com/data/histoday'
-res = requests.get(endpoint + '?fsym=BTC&tsym=USD&limit=2000')
-hist = pd.DataFrame(json.loads(res.content)['Data'])
-hist = hist.set_index('time')
-hist.index = pd.to_datetime(hist.index, unit='s')
-
-target_col = 'close'
+target_col = 'Close'
 np.random.seed(42)
 
 # data params
-window_len = 50#7
-test_size = 0.1
+window_len = 30#7
+test_size = 0.2
 zero_base = True
 
 # model params
 lstm_neurons = 500
-epochs = 5000
-batch_size = 256
+epochs = 10
+batch_size = 16
 loss = 'mae'
-dropout = 0.15
+dropout = 0.20
 optimizer = 'adam'
 
 filepath = f"model-time-{time.time()}.h5"
-model_name = f"model-dropout-{dropout}-neurons-{lstm_neurons}x2-epochs-{epochs}-loss-{loss}-batch-{batch_size}-win-{window_len}"
+model_name = f"SPY-model-dropout-{dropout}-neurons-{lstm_neurons}x2-epochs-{epochs}-loss-{loss}-batch-{batch_size}-win-{window_len}"
+
+save_training_data = False
+load_training_data = False
+process_data = True
+
+#endpoint = 'https://min-api.cryptocompare.com/data/histoday'
+#res = requests.get(endpoint + '?fsym=BTC&tsym=USD&limit=2000')
+#hist = pd.DataFrame(json.loads(res.content)['Data'])
+#hist = hist.set_index('time')
+#hist.index = pd.to_datetime(hist.index, unit='s')
+
+if process_data:
+    print(f'Loading data...')
+    df = pd.read_csv(f'SPY_all_data.csv')
+    df.columns = ['Time', 'Open', 'High', 'Low', 'Close', 'Vol']
+    hist = df.set_index('Time')
+    hist.index = pd.to_datetime(hist.index)
+
+    print(f'Load complete')
+
+
 
 def train_test_split(df, test_size=0.1):
+    print(f'train_test_split...')
     split_row = len(df) - int(test_size * len(df))
     train_data = df.iloc[:split_row]
     test_data = df.iloc[split_row:]
@@ -54,6 +68,7 @@ def normalise_min_max(df):
     """ Normalise dataframe column-wise min/max. """
     return (df - df.min()) / (df.max() - df.min())
 def extract_window_data(df, window_len=10, zero_base=True):
+    print(f'extract_window_data...')
     """ Convert dataframe to overlapping sequences/windows of len `window_data`.
     
         :param window_len: Size of window
@@ -69,6 +84,7 @@ def extract_window_data(df, window_len=10, zero_base=True):
     return np.array(window_data)
 
 def prepare_data(df, target_col, window_len=10, zero_base=True, test_size=0.2):
+    print(f'prepare_data...')
     """ Prepare data for LSTM. """
     # train test split
     train_data, test_data = train_test_split(df, test_size=test_size)
@@ -88,6 +104,7 @@ def prepare_data(df, target_col, window_len=10, zero_base=True, test_size=0.2):
 
 def build_lstm_model(input_data, output_size, neurons=20, activ_func='linear',
                      dropout=0.25, loss='mae', optimizer='adam'):
+    print(f'build_lstm_model...')
     model = Sequential()
     model.add(CuDNNLSTM(neurons, input_shape=(input_data.shape[1], input_data.shape[2]), return_sequences=True))
     model.add(Dropout(dropout))
@@ -99,10 +116,38 @@ def build_lstm_model(input_data, output_size, neurons=20, activ_func='linear',
     model.compile(loss=loss, optimizer=optimizer)
     return model
 
-train, test, X_train, X_test, y_train, y_test = prepare_data(
+def save_data_to_numpy(X_train, X_test, y_train, y_test):
+    print(f'Saving data as npy...')
+    np.save('data/X_train.npy', X_train)
+    np.save('data/X_test.npy', X_test)
+    np.save('data/y_train.npy', y_train)
+    np.save('data/y_test.npy', y_test)
+    print(f'Saved')
+
+def load_data_from_numpy(file_location):
+    print(f'Loading from {file_location}')
+    X_train = np.load(f'{file_location}/X_train.npy')
+    X_test= np.load(f'{file_location}/X_train.npy')
+    y_train= np.load(f'{file_location}/X_train.npy')
+    y_test= np.load(f'{file_location}/X_train.npy')
+
+    return X_train, X_test, y_train, y_test
+
+X_train, X_test, y_train, y_test = None, None, None, None
+
+if process_data:
+    train, test, X_train, X_test, y_train, y_test = prepare_data(
     hist, target_col, window_len=window_len, zero_base=zero_base, test_size=test_size)
 
+    if save_training_data:
+        save_data_to_numpy(X_train, X_test, y_train, y_test)
+
+
 # checkpoint = ModelCheckpoint(filepath, monitor = 'loss', verbose = 1, save_best_only = True, mode = 'min')
+
+if load_training_data:
+    X_train, X_test, y_train, y_test =load_data_from_numpy('data')
+
 
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
