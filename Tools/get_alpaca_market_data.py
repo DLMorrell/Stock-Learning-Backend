@@ -4,7 +4,7 @@ from time import sleep
 from dotenv import load_dotenv
 import pandas as pd
 from datetime import datetime
-
+import pytest
 load_dotenv()
 
 class market_data():
@@ -25,9 +25,17 @@ class market_data():
         symbol_price = price[symbol]
         return symbol_price
 
-    def getAllData(self, stock):
-        startDate = "2015-01-04T00:00:00Z"#Beginning of time if possible
-        endDate = "2020-10-02T00:00:00Z"#Change to todays date
+    def getAllData(self, stock, startDate=None, endDate=None):
+        print(f'LOG: Getting all {stock} data...')
+
+        if endDate == None:
+            today_raw = datetime.now().isoformat()
+            endDate = str(today_raw)[:len(str(today_raw))-7].replace(' ', 'T')+'Z'
+
+        if startDate == None:
+            startDate = "2015-01-04T00:00:00Z"
+
+
         allData = []
         while datetime.strptime(startDate, '%Y-%m-%dT%H:%M:%SZ') <= datetime.strptime(endDate, '%Y-%m-%dT%H:%M:%SZ'):
             sampleData = self.getPrice('1Min', stock, 1000, endDate)
@@ -35,13 +43,26 @@ class market_data():
             for bar in sampleData:
                 allData.insert(0, f'{bar.t}, {bar.o}, {bar.h}, {bar.l}, {bar.c}, {bar.v}')
 
+        print(f'LOG: Done')
         return allData
     
+    def saveAllToCsv(self, stock):
+        file_name = f'{stock}_All_Data.csv'
+        allData = self.getAllData(stock)
+        col_names = 'Time, Open, High, Low, Close, Vol'
+        print(f'LOG: Saving data...')
+        with open(file_name, mode='w', newline='\n') as csv_file:
+            csv_file.write(col_names + '\n')
+            for row in allData:
+                csv_file.write(row + '\n')
+            csv_file.close()
+        print(f'LOG: Done')
     
     # Number of shares owned
     def getShares(self, symbol):
         Position = self.alpaca.get_position(symbol)
         return Position 
+
 
     # Wait for market to open
     def waitForMarketToOpen(self):

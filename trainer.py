@@ -4,6 +4,7 @@ from tensorflow.compat.v1.keras.models import Sequential, save_model, model_from
 from tensorflow.compat.v1.keras.layers import Activation, Dense, Dropout, CuDNNLSTM, BatchNormalization
 from keras.models import Sequential
 from keras.layers import Activation, Dense, Dropout, LSTM
+from keras.callbacks import ModelCheckpoint
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -24,13 +25,14 @@ zero_base = True
 # model params
 lstm_neurons = 500
 epochs = 10
-batch_size = 16
+batch_size = 64
 loss = 'mae'
 dropout = 0.20
 optimizer = 'adam'
 
-filepath = f"model-time-{time.time()}.h5"
-model_name = f"SPY-model-dropout-{dropout}-neurons-{lstm_neurons}x2-epochs-{epochs}-loss-{loss}-batch-{batch_size}-win-{window_len}"
+
+model_name = f"saved_models/SPY-model-dropout-{dropout}-neurons-{lstm_neurons}x2-epochs-{epochs}-loss-{loss}-batch-{batch_size}-win-{window_len}"
+filepath = f"temp/{model_name}-{time.time()}.h5"
 
 save_training_data = False
 load_training_data = False
@@ -44,7 +46,7 @@ process_data = True
 
 if process_data:
     print(f'Loading data...')
-    df = pd.read_csv(f'SPY_all_data.csv')
+    df = pd.read_csv(f'SPY_All_Data.csv')
     df.columns = ['Time', 'Open', 'High', 'Low', 'Close', 'Vol']
     hist = df.set_index('Time')
     hist.index = pd.to_datetime(hist.index)
@@ -118,9 +120,13 @@ def build_lstm_model(input_data, output_size, neurons=20, activ_func='linear',
 
 def save_data_to_numpy(X_train, X_test, y_train, y_test):
     print(f'Saving data as npy...')
+    print(f'X_train shape: {X_train.shape}')
     np.save('data/X_train.npy', X_train)
+    print(f'X_test shape: {X_test.shape}')
     np.save('data/X_test.npy', X_test)
+    print(f'y_train shape: {y_train.shape}')
     np.save('data/y_train.npy', y_train)
+    print(f'y_test shape: {y_test.shape}')
     np.save('data/y_test.npy', y_test)
     print(f'Saved')
 
@@ -143,7 +149,7 @@ if process_data:
         save_data_to_numpy(X_train, X_test, y_train, y_test)
 
 
-# checkpoint = ModelCheckpoint(filepath, monitor = 'loss', verbose = 1, save_best_only = True, mode = 'min')
+checkpoint = ModelCheckpoint(filepath, monitor = 'loss', verbose = 1, save_best_only = True, mode = 'min')
 
 if load_training_data:
     X_train, X_test, y_train, y_test =load_data_from_numpy('data')
@@ -157,7 +163,7 @@ model = build_lstm_model(
     optimizer=optimizer)
 
 history = model.fit(
-    X_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, shuffle=True, callbacks=[tensorboard_callback])
+    X_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, shuffle=True, callbacks=[tensorboard_callback, checkpoint])
 
 targets = test[target_col][window_len:]
 preds = model.predict(X_test).squeeze()
